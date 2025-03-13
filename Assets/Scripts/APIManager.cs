@@ -6,8 +6,11 @@ using TMPro;
 
 public class APIManager : MonoBehaviour
 {
-    [SerializeField] private string url = "https://sid-restapi.onrender.com";
-    [SerializeField] private string Token;
+    string url = "https://sid-restapi.onrender.com";
+    string Token;
+    string Username;
+
+    AuthResponse response;
     public Credentials credentials = new Credentials();
 
     [SerializeField] private GameObject menuAuth;
@@ -20,6 +23,20 @@ public class APIManager : MonoBehaviour
     private void Awake() {
         usernameTextField = GameObject.Find("UsernameInputField");
         passwordTextField = GameObject.Find("PasswordInputField");
+
+        errorText.text = "";
+        Token = PlayerPrefs.GetString("token");
+        Username = PlayerPrefs.GetString("username");
+        credentials.username = Username;
+        if (string.IsNullOrEmpty(Token) || string.IsNullOrEmpty(Username))
+        {
+            StartCoroutine(ShowText("No hay token", 3));
+            Debug.Log("No hay Token");
+        }
+        else
+        {
+            StartCoroutine(GetPerfil());
+        }
     }
 
     public void Register()
@@ -131,7 +148,8 @@ public class APIManager : MonoBehaviour
          if (www.responseCode == 200)
          {
              string json = www.downloadHandler.text;
-             AuthResponse response = JsonUtility.FromJson<AuthResponse>(json);
+             response = JsonUtility.FromJson<AuthResponse>(json);
+             Debug.Log(response);
              GameObject.Find("PanelAuth").SetActive(false);
          }
          else
@@ -148,6 +166,45 @@ public class APIManager : MonoBehaviour
         errorText.text = "";
         
     }
+
+    public class Credentials
+{
+    public string username;
+    public string password;
+}
+
+[System.Serializable]
+public class AuthResponse
+{
+    public UserModel usuario;
+    public string token;
+}
+
+[System.Serializable]
+public class UserModel
+{
+    public string _id;
+    public string username;
+    public bool estado;
+    public DataUser data;
+}
+
+[System.Serializable]
+public class UsersList
+{
+    public UserModel[] usuarios;
+}
+
+[System.Serializable]
+public class DataUser
+{
+    public int score;
+}
+public class UpdateScore
+{
+    public string username;
+    public DataUser data;
+}
 }
 
 
