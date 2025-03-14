@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using TMPro;
+using System.Linq;
 
 
 public class APIManager : MonoBehaviour
@@ -28,9 +29,6 @@ public class APIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI errorText;
 
     private void Awake() {
-        usernameTextField = GameObject.Find("UsernameInputField");
-        passwordTextField = GameObject.Find("PasswordInputField");
-
         errorText.text = "";
         Token = PlayerPrefs.GetString("token");
         Username = PlayerPrefs.GetString("username");
@@ -48,6 +46,8 @@ public class APIManager : MonoBehaviour
 
     public void Register()
     {
+        usernameTextField = GameObject.Find("UsernameInputField");
+        passwordTextField = GameObject.Find("PasswordInputField");
         //crear el post data y llamar coroutine
         credentials.username = usernameTextField.GetComponent<TMP_InputField>().text;
         credentials.password = passwordTextField.GetComponent<TMP_InputField>().text;
@@ -80,6 +80,7 @@ public class APIManager : MonoBehaviour
         UpdateScore patchData = new UpdateScore();
         patchData.username = PlayerPrefs.GetString("username");
         DataUser userScore = new DataUser();
+        if (userScore.score > score) return;
         userScore.score = score;
         patchData.data = userScore;
         string postData = JsonUtility.ToJson(patchData);
@@ -128,6 +129,7 @@ public class APIManager : MonoBehaviour
      if (www.result == UnityWebRequest.Result.ConnectionError)
      {
          Debug.Log(www.error);
+         StartCoroutine(ShowText(www.error, 3));
      }
      else
      {
@@ -150,6 +152,7 @@ public class APIManager : MonoBehaviour
              string mensaje = "status:" + www.responseCode;
              mensaje += "\nError: " + www.downloadHandler.text;
              Debug.Log(mensaje);
+             StartCoroutine(ShowText(www.error, 3));
          }
      }
  }
@@ -232,7 +235,9 @@ public class APIManager : MonoBehaviour
                 string json = www.downloadHandler.text;
                 UsersList response = JsonUtility.FromJson<UsersList>(json);
                 position = new Vector3(0, -170, 0);
-                foreach (var user in response.usuarios)
+
+                UserModel[] leaderboard = response.usuarios.OrderByDescending(u=>u.data.score).Take(5).ToArray();
+                foreach (var user in leaderboard)
                 {
 
                     GameObject userObject = Instantiate(UserLeaderboardPrefab, transform);
@@ -269,6 +274,11 @@ public class APIManager : MonoBehaviour
                 Debug.Log("Token Vencido... Redireccionar a login");
             }
         }
+    }
+
+    public void OnSesionClose(){
+        PlayerPrefs.DeleteKey("token");
+        PlayerPrefs.DeleteKey("username");
     }
 
     public void EraseLeaderBoard(){

@@ -18,6 +18,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] TextMeshProUGUI scoreText;
     [SerializeField] TextMeshProUGUI guessText;
     [SerializeField] TextMeshProUGUI userScoreText;
+    [SerializeField] TextMeshProUGUI mensageText;
 
     public delegate void OnSpawnDices();
     public OnSpawnDices OnSpawnDicesEvent;
@@ -36,11 +37,33 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
+    private void Start() {
+        scoreText.gameObject.SetActive(false);
+        guessText.gameObject.SetActive(false);
+        userScoreText.gameObject.SetActive(false);
+        mainMenu.SetActive(true);
+        gameMenu.SetActive(false);
+        gameMenu1.SetActive(true);
+        gameMenu2.SetActive(false);
+        endMenu.SetActive(false);
+    }
 
     public void SetGuess(){
         int guess = int.Parse(GameObject.Find("GuessInputField").GetComponent<TMP_InputField>().text);
+        if (guess <= diceAmount*6 && guess > 0){
         guessScore = guess;
         guessText.text = $"Tu número: {guessScore}";
+
+        scoreText.gameObject.SetActive(true);
+        guessText.gameObject.SetActive(true);
+        mensageText.text = "";  
+        gameMenu2.SetActive(false);
+        OnThrowDices();
+        } else {
+            GameObject.Find("GuessInputField").GetComponent<TMP_InputField>().text = "";
+            //GameObject.Find("GuessInputField").GetComponent<TMP_InputField>().placeholder.GetComponent<TextMeshProUGUI>().text = "El número debe estar en el rango de los dados";
+            mensageText.text = "El número debe estar en el rango de los dados";
+        }
     }
 
     public void SetDiceAmount(int amount){
