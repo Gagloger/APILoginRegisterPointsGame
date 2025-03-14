@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using TMPro;
@@ -9,6 +10,12 @@ public class APIManager : MonoBehaviour
     string url = "https://sid-restapi.onrender.com";
     string Token;
     string Username;
+
+    Vector3 position;
+    [SerializeField] private GameObject UserLeaderboardPrefab;
+    [SerializeField] private float verticalSpacing = 50;
+
+    private List<GameObject> userInstances = new List<GameObject>();
 
     AuthResponse response;
     public Credentials credentials = new Credentials();
@@ -63,6 +70,21 @@ public class APIManager : MonoBehaviour
         Debug.Log(postData);
 
         StartCoroutine(LoginPost(postData));
+    }
+
+    public void LoadLeaderBoard(){
+        StartCoroutine(GetUsers());
+    }
+
+    public void UpdateData(int score){
+        UpdateScore patchData = new UpdateScore();
+        patchData.username = PlayerPrefs.GetString("username");
+        DataUser userScore = new DataUser();
+        userScore.score = score;
+        patchData.data = userScore;
+        string postData = JsonUtility.ToJson(patchData);
+        Debug.Log(postData);
+        StartCoroutine(UpdateDataPatch(postData));
     }
 
     IEnumerator RegisterPost(string postData)
@@ -131,6 +153,37 @@ public class APIManager : MonoBehaviour
          }
      }
  }
+ IEnumerator UpdateDataPatch(string postData)
+    {
+        string path = "/api/usuarios";
+        UnityWebRequest www = UnityWebRequest.Put(url + path, postData);
+        www.method = "PATCH";
+        www.SetRequestHeader("Content-Type", "application/json");
+        www.SetRequestHeader("x-token", Token);
+        yield return www.SendWebRequest();
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            StartCoroutine(ShowText(www.error, 3));
+        }
+        else
+        {
+            if (www.responseCode == 200)
+            {
+                string json = www.downloadHandler.text;
+                response = JsonUtility.FromJson<AuthResponse>(json);
+                Debug.Log(response.usuario.username + response.usuario.data.score);
+                //StartCoroutine("GetUsers");
+            }
+            else
+            {
+                string mensaje = "status: " + www.responseCode;
+                mensaje += "\nError: " + www.downloadHandler.text;
+                Debug.Log(mensaje);
+                StartCoroutine(ShowText(mensaje, 3));
+            }
+        }
+    }
 
  IEnumerator GetPerfil()
  {
@@ -150,7 +203,8 @@ public class APIManager : MonoBehaviour
              string json = www.downloadHandler.text;
              response = JsonUtility.FromJson<AuthResponse>(json);
              Debug.Log(response);
-             GameObject.Find("PanelAuth").SetActive(false);
+             menuAuth.SetActive(false);
+             menuGame.SetActive(true);
          }
          else
          {
@@ -158,6 +212,72 @@ public class APIManager : MonoBehaviour
          }
      }
  }
+
+ IEnumerator GetUsers()
+    {
+        string path = "/api/usuarios";
+        UnityWebRequest www = UnityWebRequest.Get(url + path);
+        www.SetRequestHeader("x-token", Token);
+        yield return www.SendWebRequest();
+
+        if (www.result == UnityWebRequest.Result.ConnectionError)
+        {
+            Debug.Log(www.error);
+            StartCoroutine(ShowText(www.error, 3));
+        }
+        else
+        {
+            if (www.responseCode == 200)
+            {
+                string json = www.downloadHandler.text;
+                UsersList response = JsonUtility.FromJson<UsersList>(json);
+                position = new Vector3(0, -170, 0);
+                foreach (var user in response.usuarios)
+                {
+
+                    GameObject userObject = Instantiate(UserLeaderboardPrefab, transform);
+
+                    // Asigna la posición
+                    userObject.GetComponent<RectTransform>().anchoredPosition = position;
+
+                    // Obtén los componentes TextMeshProUGUI
+                    TextMeshProUGUI usernameText = userObject.transform.Find("Text_Username").GetComponent<TextMeshProUGUI>();
+                    TextMeshProUGUI scoreText = userObject.transform.Find("Text_Score").GetComponent<TextMeshProUGUI>();
+
+                    // Asigna los valores de username y score
+                    if (usernameText != null)
+                    {
+                        usernameText.text = user.username;
+                    }
+                    if (scoreText != null)
+                    {
+                        scoreText.text = user.data.score.ToString();
+                    }
+
+                    // Muestra el log en la consola
+                    Debug.Log(user.username + "|" + user.data.score);
+
+                    userInstances.Add(userObject);
+
+                    // Ajusta la posición para el siguiente elemento
+                    position.y -= verticalSpacing;
+                }
+                
+            }
+            else
+            {
+                Debug.Log("Token Vencido... Redireccionar a login");
+            }
+        }
+    }
+
+    public void EraseLeaderBoard(){
+        foreach (GameObject user in userInstances)
+        {
+            Destroy(user);
+        }
+        userInstances.Clear();
+    }
 
  IEnumerator ShowText(string text, int duration)
     {
